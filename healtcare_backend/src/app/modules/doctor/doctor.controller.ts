@@ -4,15 +4,18 @@ import { sendResponse } from "../../shared/sendResponse";
 import status from "http-status";
 import { doctorService } from "./doctor.service";
 import { IUpdateDoctorPayload } from "./doctor.interface";
+import { IQueryParams } from "../../interface/query.interface";
 
 const getDoctors = catchAsync(async (req: Request, res: Response) => {
-  const result = await doctorService.getDoctorsHandler();
+  const query = req.query;
+  const result = await doctorService.getDoctorsHandler(query as IQueryParams);
 
   sendResponse(res, {
     statusCode: status.OK,
     ok: true,
     message: "Data retrived successfully",
-    data: result,
+    data: result.data,
+    meta: result.meta,
   });
 });
 

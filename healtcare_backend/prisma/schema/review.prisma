@@ -1,0 +1,18 @@
+model Review {
+  id            String      @id @default(uuid(7))
+  rating        Float       @default(0.0)
+  comment       String?
+  doctorId      String
+  patientId     String
+  appointmentId String      @unique
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  doctor        Doctor      @relation(fields: [doctorId], references: [id])
+  patient       Patient     @relation(fields: [patientId], references: [id])
+
+  @@index([appointmentId], map: "idx_review_appointmentId")
+  @@index([doctorId], map: "idx_review_doctorId")
+  @@index([patientId], map: "idx_review_patientId")
+  @@map("reviews")
+}

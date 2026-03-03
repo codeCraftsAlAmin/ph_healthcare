@@ -3,6 +3,7 @@ import { specialityService } from "./speciality.service";
 import { catchAsync } from "../../shared/catchAsync";
 import { sendResponse } from "../../shared/sendResponse";
 import status from "http-status";
+import { Speciality } from "../../../generated/prisma/client";
 
 const getSpecialities = catchAsync(async (req: Request, res: Response) => {
   const result = await specialityService.getSpecialitiesHandler();
@@ -15,10 +16,13 @@ const getSpecialities = catchAsync(async (req: Request, res: Response) => {
 });
 
 const createSpeciality = catchAsync(async (req: Request, res: Response) => {
-  const { title } = req.body;
+  const payload = {
+    ...req.body,
+    icon: req.file?.path,
+  };
 
   const result = await specialityService.createSpecialitiesHandler(
-    title as string,
+    payload as Speciality,
   );
 
   sendResponse(res, {

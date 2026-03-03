@@ -1,21 +1,61 @@
+import { Doctor, Prisma } from "../../../generated/prisma/client";
 import { UserStatus } from "../../../generated/prisma/enums";
+import AppError from "../../errorHelpers/AppError";
+import { IQueryParams } from "../../interface/query.interface";
 import { prisma } from "../../lib/prisma";
+import { QueryBuilder } from "../../utils/QueryBuilder";
+import {
+  doctorFilterableFields,
+  doctorIncludingConfig,
+  doctorSearchedFields,
+} from "./doctor.constant";
 import { IUpdateDoctorPayload } from "./doctor.interface";
 
-const getDoctorsHandler = async () => {
-  return await prisma.doctor.findMany({
-    include: {
+const getDoctorsHandler = async (query: IQueryParams) => {
+  // return await prisma.doctor.findMany({
+  //   include: {
+  //     specialities: {
+  //       select: {
+  //         speciality: {
+  //           select: {
+  //             title: true,
+  //           },
+  //         },
+  //       },
+  //     },
+  //   },
+  // });
+  // query builders
+  const queryBuilders = new QueryBuilder<
+    Doctor,
+    Prisma.DoctorWhereInput,
+    Prisma.DoctorInclude
+  >(prisma.doctor, query, {
+    searchableFields: doctorSearchedFields,
+    filterableFields: doctorFilterableFields,
+  });
+
+  const result = await queryBuilders
+    .search()
+    .filter()
+    .where({ isDeleted: false })
+    .sort()
+    .include({
+      user: true,
       specialities: {
-        select: {
-          speciality: {
-            select: {
-              title: true,
-            },
-          },
+        include: {
+          speciality: true,
         },
       },
-    },
-  });
+    })
+    .dynamicInclude(doctorIncludingConfig)
+    .fields()
+    .pagination()
+    .sort()
+    .execute();
+
+  // console.log("result ~ 🔑🕙", result);
+  return result;
 };
 
 const deleteDoctorsHandler = async (doctorId: string) => {
@@ -27,7 +67,7 @@ const deleteDoctorsHandler = async (doctorId: string) => {
   });
 
   if (!findDoctor) {
-    throw new Error("Data not found");
+    throw new AppError(404, "Data not found");
   }
 
   // soft delete
@@ -102,7 +142,7 @@ const updateDoctorHandler = async (
   });
 
   if (!findDoctor) {
-    throw new Error("Doctor not found with this id");
+    throw new AppError(404, "Doctor not found with this id");
   }
 
   const { doctor: doctorData, specialites } = payload;
@@ -152,7 +192,6 @@ const updateDoctorHandler = async (
         }
       }
     }
-
     return updateDoctor;
   });
 

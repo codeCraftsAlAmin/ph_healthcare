@@ -1,0 +1,22 @@
+model Appointment {
+  id             String            @id @default(uuid(7))
+  videoCallingId String            @unique @db.Uuid
+  status         AppointmentStatus @default(SCHEDULED)
+  paymentStatus  PaymentStatus     @default(UNPAID)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  patientId      String
+  doctorId       String
+  scheduleId     String
+  doctor         Doctor            @relation(fields: [doctorId], references: [id])
+  patient        Patient           @relation(fields: [patientId], references: [id])
+  schedule       Schedule          @relation(fields: [scheduleId], references: [id])
+  payment        Payment?
+  prescription   Prescription?
+  review         Review?
+
+  @@index([patientId], map: "idx_appointment_patientId")
+  @@index([doctorId], map: "idx_appointment_doctorId")
+  @@index([scheduleId], map: "idx_appointment_scheduleId")
+  @@map("appointments")
+}

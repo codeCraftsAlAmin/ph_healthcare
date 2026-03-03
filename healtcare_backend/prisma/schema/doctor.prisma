@@ -1,27 +1,31 @@
 model Doctor {
-    id            String  @id @default(uuid(7))
-    name          String
-    email         String  @unique
-    profilePhoto  String?
-    contactNumber String?
-    address       String?
+  id                  String             @id @default(uuid(7))
+  name                String
+  email               String             @unique
+  profilePhoto        String?
+  contactNumber       String?
+  address             String?
+  registrationNumber  String
+  experience          Int                @default(0)
+  gender              Gender
+  appointmentFee      Float
+  qualification       String
+  currentWorkingplace String
+  designation         String
+  averageRating       Float              @default(0.0)
+  userId              String             @unique
+  isDeleted           Boolean            @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  appointments        Appointment[]
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctorSchedules     DoctorSchedule[]
+  specialities        DoctorSpeciality[]
+  prescriptions       Prescription[]
+  reviews             Review[]
 
-    registrationNumber  String
-    experience          Int    @default(0)
-    gender              Gender
-    appointmentFee      Float
-    qualification       String
-    currentWorkingplace String
-    designation         String
-    averageRating       Float  @default(0.0)
-
-    // relations
-    userId       String             @unique
-    user         User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    specialities DoctorSpeciality[]
-
-    isDeleted Boolean   @default(false)
-    deletedAt DateTime?
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
+  @@index([email], map: "idx_doctor_email")
+  @@index([isDeleted], map: "idx_doctor_isDeleted")
+  @@map("doctor")
 }

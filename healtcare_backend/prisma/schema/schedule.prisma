@@ -11,14 +11,17 @@ model Schedule {
 }
 
 model DoctorSchedule {
-  id         String   @id @default(uuid(7))
+  id       String  @id @default(uuid(7))
+  isBooked Boolean @default(false)
+
+  // realtion
   doctorId   String
-  isBooked   Boolean  @default(false)
   scheduleId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
   doctor     Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([doctorId, scheduleId])
   @@index([doctorId], map: "idx_doctor_schedule_doctorId")

@@ -14,6 +14,7 @@ import path from "path";
 import { envVars } from "./app/config/env";
 import cors from "cors";
 import qs from "qs";
+import { schedulesRouter } from "./app/modules/schedules/schedules.route";
 
 const app: Application = express();
 
@@ -41,6 +42,9 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+// schedules router
+app.use("/api", schedulesRouter);
 
 // speciality route
 app.use("/api/v1", sepcialityRouter);

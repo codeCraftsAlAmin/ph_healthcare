@@ -79,14 +79,16 @@ const createScheduleHandler = async (payload: ICreateSchedule) => {
   return schedules;
 };
 const getSchedulesHandler = async (query: IQueryParams) => {
-  const result = new QueryBuilder<
+  const queryBuilder = new QueryBuilder<
     Schedule,
     Prisma.ScheduleWhereInput,
     Prisma.ScheduleInclude
   >(prisma.schedule, query, {
     searchableFields: scheduleSearchableFields,
     filterableFields: scheduleFilterableFields,
-  })
+  });
+
+  const result = await queryBuilder
     .search()
     .filter()
     .sort()

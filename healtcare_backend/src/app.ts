@@ -15,6 +15,9 @@ import { envVars } from "./app/config/env";
 import cors from "cors";
 import qs from "qs";
 import { schedulesRouter } from "./app/modules/schedules/schedules.route";
+import { doctorScheduleRouter } from "./app/modules/doctorSchedules/doctorSchedule.route";
+import { appointmentRouter } from "./app/modules/appointment/appointment.route";
+import { PaymentController } from "./app/modules/payment/payment.controller";
 
 const app: Application = express();
 
@@ -42,6 +45,19 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+// stripe webhook
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  PaymentController.handlePaymentWebhook,
+);
+
+// appointment router
+app.use("/api", appointmentRouter);
+
+// doctor schedule router
+app.use("/api", doctorScheduleRouter);
 
 // schedules router
 app.use("/api", schedulesRouter);

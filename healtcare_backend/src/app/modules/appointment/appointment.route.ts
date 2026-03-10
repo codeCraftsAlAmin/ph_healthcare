@@ -40,4 +40,18 @@ router.get(
   appointmentController.getAllAppointments,
 );
 
+// book appointment with pay later
+router.post(
+  "/book-appointment-with-pay-later",
+  checkAuth(Role.PATIENT),
+  appointmentController.bookAppointmentWithPaylater,
+);
+
+// initiate payment
+router.post(
+  "/initiate-payment/:id",
+  checkAuth(Role.PATIENT),
+  appointmentController.initiatePayment,
+);
+
 export const appointmentRouter = router;

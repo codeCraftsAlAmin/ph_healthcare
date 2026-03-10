@@ -24,6 +24,8 @@ interface EnvConfig {
   CLOUDINARY_KEY_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
+  WEBHOOK_SECRET_KEY: string;
+  STRIPE_SECRET_KEY: string;
 }
 
 const envVariables = (): EnvConfig => {
@@ -49,6 +51,8 @@ const envVariables = (): EnvConfig => {
     "CLOUDINARY_KEY_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
+    "WEBHOOK_SECRET_KEY",
+    "STRIPE_SECRET_KEY",
   ];
 
   requiredVariables.forEach((variable) => {
@@ -82,6 +86,8 @@ const envVariables = (): EnvConfig => {
     CLOUDINARY_KEY_NAME: process.env.CLOUDINARY_KEY_NAME as string,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY as string,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
+    WEBHOOK_SECRET_KEY: process.env.WEBHOOK_SECRET_KEY as string,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
   };
 };
 

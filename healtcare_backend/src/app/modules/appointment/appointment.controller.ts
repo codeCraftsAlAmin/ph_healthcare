@@ -1,14 +1,14 @@
 import status from "http-status";
 import { sendResponse } from "../../shared/sendResponse";
 import { Request, Response } from "express";
-import { appointmentService } from "./appointment.service";
+import { AppointmentService } from "./appointment.service";
 import { IQueryParams } from "../../interface/query.interface";
 
 const bookAppointment = async (req: Request, res: Response) => {
   const user = req.user;
   const payload = req.body;
 
-  const result = await appointmentService.bookAppointment(user!, payload);
+  const result = await AppointmentService.bookAppointment(user!, payload);
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
@@ -20,7 +20,7 @@ const bookAppointment = async (req: Request, res: Response) => {
 const getMyAppointments = async (req: Request, res: Response) => {
   const user = req.user;
 
-  const result = await appointmentService.getMyAppointments(user!);
+  const result = await AppointmentService.getMyAppointments(user!);
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
@@ -34,7 +34,7 @@ const changeAppointmentStatus = async (req: Request, res: Response) => {
   const payload = req.body;
   const { id } = req.params;
 
-  const result = await appointmentService.changeAppointmentStatus(
+  const result = await AppointmentService.changeAppointmentStatus(
     user!,
     payload,
     id as string,
@@ -52,7 +52,7 @@ const getMyAppointment = async (req: Request, res: Response) => {
   const user = req.user;
   const { id } = req.params;
 
-  const result = await appointmentService.getMyAppointment(user!, id as string);
+  const result = await AppointmentService.getMyAppointment(user!, id as string);
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
@@ -63,7 +63,7 @@ const getMyAppointment = async (req: Request, res: Response) => {
 
 const getAllAppointments = async (req: Request, res: Response) => {
   const query = req.query;
-  const result = await appointmentService.getAllAppointments(
+  const result = await AppointmentService.getAllAppointments(
     query as IQueryParams,
   );
   sendResponse(res, {
@@ -74,10 +74,46 @@ const getAllAppointments = async (req: Request, res: Response) => {
   });
 };
 
+const bookAppointmentWithPaylater = async (req: Request, res: Response) => {
+  const payload = req.body;
+  const user = req.user;
+
+  const result = await AppointmentService.bookAppointmentWithPaylater(
+    payload,
+    user!,
+  );
+
+  sendResponse(res, {
+    ok: true,
+    statusCode: status.OK,
+    message: "Appointment booked successfully with Pay Later option",
+    data: result,
+  });
+};
+
+const initiatePayment = async (req: Request, res: Response) => {
+  const appointmentId = req.params;
+  const user = req.user;
+
+  const result = await AppointmentService.bookAppointmentWithPaylater(
+    appointmentId,
+    user!,
+  );
+
+  sendResponse(res, {
+    ok: true,
+    statusCode: status.OK,
+    message: "Payment initiated successfully",
+    data: result,
+  });
+};
+
 export const appointmentController = {
   bookAppointment,
   getMyAppointments,
   changeAppointmentStatus,
   getMyAppointment,
   getAllAppointments,
+  bookAppointmentWithPaylater,
+  initiatePayment,
 };

@@ -5,7 +5,7 @@ import { TErrorResponse, TErrorSource } from "../interface/error.interface";
 import z from "zod";
 import { handleZodError } from "../errorHelpers/handleZodError";
 import AppError from "../errorHelpers/AppError";
-import { deleteFileFromCloudinary } from "../config/cloudinary.config";
+import { deleteUploadFilesFromGlobalErrHandler } from "../utils/deleteUploadFilesFromGlobalErrHandler";
 
 export const globalError = async (
   err: any,
@@ -18,17 +18,8 @@ export const globalError = async (
     console.log("Globar Error", err);
   }
 
-  // delete file from cloudinary if file is uploaded
-  if (req.file) {
-    await deleteFileFromCloudinary(req.file.path);
-  }
-
-  // delete multiple files from cloudinary
-  if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-    const imageUrl = req.files.map((file) => file.path);
-
-    await Promise.all(imageUrl.map((url) => deleteFileFromCloudinary(url)));
-  }
+  // delete uploaded files from cloudinary
+  await deleteUploadFilesFromGlobalErrHandler(req);
 
   let errorSource: TErrorSource[] = [];
   let statusCode: number = status.INTERNAL_SERVER_ERROR;

@@ -1,4 +1,4 @@
-import { uuidv7 } from "zod";
+import { v7 as uuidv7 } from "uuid";
 import { IRequestUserInterface } from "../../interface/requestUserInterface";
 import { prisma } from "../../lib/prisma";
 import {
@@ -42,32 +42,31 @@ const bookAppointment = async (
   });
 
   // verify the slot
-  await prisma.doctorSchedule.findUniqueOrThrow({
+  const doctorSchedule = await prisma.doctorSchedule.findUniqueOrThrow({
     where: {
-      id: payload.scheduleId,
+      doctorId_scheduleId: {
+        doctorId: payload.doctorId,
+        scheduleId: payload.scheduleId,
+      },
     },
   });
 
-  const videoCallingId = String(uuidv7());
-
   // create the appointment
-  const result = await prisma.$transaction(async (tx) => {
-    // create the appointment
+  const { appointment, paymentData } = await prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.create({
       data: {
         doctorId: payload.doctorId,
-        scheduleId: payload.scheduleId,
+        scheduleId: doctorSchedule.id,
         patientId: patient.id,
-        videoCallingId,
+        videoCallingId: String(uuidv7()),
       },
     });
 
-    // update the slot
     await tx.doctorSchedule.update({
       where: {
         doctorId_scheduleId: {
           doctorId: payload.doctorId,
-          scheduleId: payload.scheduleId,
+          scheduleId: doctorSchedule.id,
         },
       },
       data: {
@@ -75,54 +74,50 @@ const bookAppointment = async (
       },
     });
 
-    // TODO : Payment Integration will be here
-    const transactionId = String(uuidv7());
-
     // create payment data
     const paymentData = await tx.payment.create({
       data: {
         appointmentId: appointment.id,
-        transactionId,
+        transactionId: String(uuidv7()),
         amount: doctor.appointmentFee,
       },
-    });
-
-    // create session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "bdt",
-            product_data: {
-              name: `Appointment with Dr. ${doctor.name}`,
-            },
-            unit_amount: doctor.appointmentFee * 100,
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        appointmentId: appointment.id,
-        patientId: patient.id,
-      },
-
-      success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success`,
-      cancel_url: `${envVars.FRONTEND_URL}/dashboard/appointments`,
     });
 
     return {
       appointment,
       paymentData,
-      paymentUrl: session.url,
     };
   });
 
+  // create session => stripe payment gateway
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: "bdt",
+          product_data: {
+            name: `Appointment with Dr. ${doctor.name}`,
+          },
+          unit_amount: doctor.appointmentFee * 100,
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      appointmentId: appointment.id,
+      paymentId: paymentData.id,
+    },
+
+    success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success`,
+    cancel_url: `${envVars.FRONTEND_URL}/dashboard/appointments`,
+  });
+
   return {
-    appointment: result.appointment,
-    paymentData: result.paymentData,
-    paymentUrl: result.paymentUrl,
+    appointment,
+    paymentData,
+    paymentUrl: session.url,
   };
 };
 
@@ -286,27 +281,31 @@ const getMyAppointment = async (user: IRequestUserInterface, id: string) => {
     },
   });
 
-  // if user not found
-  if (!patient && !doctor) {
+  let result: any = [];
+
+  if (patient) {
+    result = await prisma.appointment.findMany({
+      where: {
+        patientId: patient?.id,
+      },
+      include: {
+        doctor: true,
+        patient: true,
+      },
+    });
+  } else if (doctor) {
+    result = await prisma.appointment.findMany({
+      where: {
+        doctorId: doctor?.id,
+      },
+      include: {
+        doctor: true,
+        patient: true,
+      },
+    });
+  } else {
     throw new AppError(status.NOT_FOUND, "User not found");
   }
-
-  const whereClause: any = { id };
-
-  if (user.role === "PATIENT") {
-    whereClause.patientId = user.userId;
-  }
-  if (user.role === "DOCTOR") {
-    whereClause.doctorId = user.userId;
-  }
-
-  const result = await prisma.appointment.findUniqueOrThrow({
-    where: whereClause,
-    include: {
-      doctor: true,
-      patient: true,
-    },
-  });
 
   return result;
 };
@@ -338,14 +337,14 @@ const bookAppointmentWithPaylater = async (
   user: IRequestUserInterface,
 ) => {
   // find user
-  const patientData = await prisma.patient.findUnique({
+  const patientData = await prisma.patient.findUniqueOrThrow({
     where: {
       email: user.email,
     },
   });
 
   // find doctor
-  const doctorData = await prisma.doctor.findUnique({
+  const doctorData = await prisma.doctor.findUniqueOrThrow({
     where: {
       id: payload.doctorId,
       isDeleted: false,
@@ -353,30 +352,23 @@ const bookAppointmentWithPaylater = async (
   });
 
   // find schedule
-  const scheduleData = await prisma.schedule.findUnique({
+  const scheduleData = await prisma.schedule.findUniqueOrThrow({
     where: {
       id: payload.scheduleId,
     },
   });
 
-  if (!patientData || !doctorData || !scheduleData) {
-    throw new AppError(status.NOT_FOUND, "Data not found");
-  }
-
-  const videoCallingId = String(uuidv7());
-
-  const result = await prisma.$transaction(async (tx) => {
-    // create appointment
+  // create appointment
+  const { appointment, payment } = await prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.create({
       data: {
         patientId: patientData.id,
         doctorId: doctorData.id,
         scheduleId: scheduleData.id,
-        videoCallingId,
+        videoCallingId: String(uuidv7()),
       },
     });
 
-    // update doctor schedule
     await tx.doctorSchedule.update({
       where: {
         doctorId_scheduleId: {
@@ -389,12 +381,10 @@ const bookAppointmentWithPaylater = async (
       },
     });
 
-    const transactionId = String(uuidv7());
-    // create payment
     const payment = await tx.payment.create({
       data: {
         appointmentId: appointment.id,
-        transactionId,
+        transactionId: String(uuidv7()),
         amount: doctorData.appointmentFee,
       },
     });
@@ -406,8 +396,8 @@ const bookAppointmentWithPaylater = async (
   });
 
   return {
-    appointment: result.appointment,
-    payment: result.payment,
+    appointment,
+    payment,
   };
 };
 
@@ -417,14 +407,14 @@ const initiatePayment = async (
   user: IRequestUserInterface,
 ) => {
   // find paitient
-  const patientData = await prisma.patient.findFirstOrThrow({
+  const patientData = await prisma.patient.findUniqueOrThrow({
     where: {
       email: user.email,
     },
   });
 
   // find appointment
-  const appointmentData = await prisma.appointment.findUniqueOrThrow({
+  const appointmentData = await prisma.appointment.findUnique({
     where: {
       id: appointmentId,
       patientId: patientData.id,
@@ -443,7 +433,7 @@ const initiatePayment = async (
     throw new AppError(status.NOT_FOUND, "Payment not found");
   }
 
-  if (appointmentData.payment?.status === PaymentStatus.PAID) {
+  if (appointmentData.payment.status === PaymentStatus.PAID) {
     throw new AppError(status.BAD_REQUEST, "Payment already completed");
   }
 
@@ -469,7 +459,7 @@ const initiatePayment = async (
     ],
     metadata: {
       appointmentId: appointmentData.id,
-      patientId: patientData.id,
+      paymentId: appointmentData.payment.id,
     },
 
     success_url: `${envVars.FRONTEND_URL}/dashboard/payment/payment-success?appointment_id=${appointmentData.id}&payment_id=${appointmentData.payment.id}`,
@@ -477,8 +467,65 @@ const initiatePayment = async (
   });
 
   return {
-    paymentUrl: session.url
-  }
+    paymentUrl: session.url,
+  };
+};
+
+// cancel unpaid payment
+const cancelUnpaidPayments = async () => {
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+  // find unpaid appointments
+  const unpaidAppointments = await prisma.appointment.findMany({
+    where: {
+      paymentStatus: PaymentStatus.UNPAID,
+      createdAt: {
+        lte: thirtyMinutesAgo,
+      },
+    },
+  });
+
+  if (unpaidAppointments.length === 0) return;
+
+  const appointmentCancel = unpaidAppointments.map(
+    (appointment) => appointment.id,
+  );
+
+  // cancel appointment and delete payment
+  await prisma.$transaction(async (tx) => {
+    await tx.appointment.updateMany({
+      where: {
+        id: {
+          in: appointmentCancel,
+        },
+      },
+      data: {
+        status: AppointmentStatus.CANCELED,
+      },
+    });
+
+    await tx.payment.deleteMany({
+      where: {
+        appointmentId: {
+          in: appointmentCancel,
+        },
+      },
+    });
+
+    for (const unpaidAppointment of unpaidAppointments) {
+      await tx.doctorSchedule.update({
+        where: {
+          doctorId_scheduleId: {
+            doctorId: unpaidAppointment.doctorId,
+            scheduleId: unpaidAppointment.scheduleId,
+          },
+        },
+        data: {
+          isBooked: false,
+        },
+      });
+    }
+  });
 };
 
 export const AppointmentService = {
@@ -489,4 +536,5 @@ export const AppointmentService = {
   getAllAppointments,
   bookAppointmentWithPaylater,
   initiatePayment,
+  cancelUnpaidPayments,
 };

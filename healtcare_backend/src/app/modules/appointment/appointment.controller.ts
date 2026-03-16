@@ -92,11 +92,11 @@ const bookAppointmentWithPaylater = async (req: Request, res: Response) => {
 };
 
 const initiatePayment = async (req: Request, res: Response) => {
-  const appointmentId = req.params;
+  const appointmentId = req.params.id;
   const user = req.user;
 
-  const result = await AppointmentService.bookAppointmentWithPaylater(
-    appointmentId,
+  const result = await AppointmentService.initiatePayment(
+    appointmentId as string,
     user!,
   );
 

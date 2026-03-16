@@ -26,6 +26,9 @@ interface EnvConfig {
   CLOUDINARY_API_SECRET: string;
   WEBHOOK_SECRET_KEY: string;
   STRIPE_SECRET_KEY: string;
+  SUPER_ADMIN_NAME: string;
+  SUPER_ADMIN_EMAIL: string;
+  SUPER_ADMIN_PASS: string;
 }
 
 const envVariables = (): EnvConfig => {
@@ -53,6 +56,9 @@ const envVariables = (): EnvConfig => {
     "CLOUDINARY_API_SECRET",
     "WEBHOOK_SECRET_KEY",
     "STRIPE_SECRET_KEY",
+    "SUPER_ADMIN_NAME",
+    "SUPER_ADMIN_EMAIL",
+    "SUPER_ADMIN_PASS",
   ];
 
   requiredVariables.forEach((variable) => {
@@ -88,6 +94,9 @@ const envVariables = (): EnvConfig => {
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET as string,
     WEBHOOK_SECRET_KEY: process.env.WEBHOOK_SECRET_KEY as string,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
+    SUPER_ADMIN_NAME: process.env.SUPER_ADMIN_NAME as string,
+    SUPER_ADMIN_EMAIL: process.env.SUPER_ADMIN_NAME as string,
+    SUPER_ADMIN_PASS: process.env.SUPER_ADMIN_NAME as string,
   };
 };
 

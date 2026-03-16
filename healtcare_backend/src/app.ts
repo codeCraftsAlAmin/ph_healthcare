@@ -18,6 +18,11 @@ import { schedulesRouter } from "./app/modules/schedules/schedules.route";
 import { doctorScheduleRouter } from "./app/modules/doctorSchedules/doctorSchedule.route";
 import { appointmentRouter } from "./app/modules/appointment/appointment.route";
 import { PaymentController } from "./app/modules/payment/payment.controller";
+import cron from "node-cron";
+import { AppointmentService } from "./app/modules/appointment/appointment.service";
+import { patientRouter } from "./app/modules/patient/patient.route";
+import { reviewRouter } from "./app/modules/review/review.route";
+import { prescriptionRouter } from "./app/modules/prescription/prescription.route";
 
 const app: Application = express();
 
@@ -52,6 +57,28 @@ app.post(
   express.raw({ type: "application/json" }),
   PaymentController.handlePaymentWebhook,
 );
+
+// cancel unpaid appointment
+cron.schedule("*/25 * * * *", () => {
+  try {
+    console.log("Running cron job to cancel unpaid appointments...");
+    AppointmentService.cancelUnpaidPayments();
+  } catch (error: any) {
+    console.error(
+      "Error occurred while canceling unpaid appointments:",
+      error.message,
+    );
+  }
+});
+
+// review route
+app.use("/api", reviewRouter);
+
+// update profile route
+app.use("/api", patientRouter);
+
+// prescription route
+app.use("/api", prescriptionRouter);
 
 // appointment router
 app.use("/api", appointmentRouter);

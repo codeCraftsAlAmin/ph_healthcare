@@ -187,6 +187,14 @@ const getMyDoctorSchedules = async (
     .search()
     .filter()
     .pagination()
+    .include({
+      schedule: true,
+      doctor: {
+        include: {
+          user: true,
+        },
+      },
+    })
     .dynamicInclude(doctorScheduleIncludeConfig)
     .sort()
     .execute();

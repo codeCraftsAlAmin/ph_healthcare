@@ -5,6 +5,8 @@ import { Role, UserStatus } from "../../generated/prisma/enums";
 import { envVars } from "../config/env";
 import { bearer, emailOTP } from "better-auth/plugins";
 import { sendEmail } from "../utils/email";
+import AppError from "../errorHelpers/AppError";
+import status from "http-status";
 
 export const auth = betterAuth({
   baseURL: envVars.BETTER_AUTH_URL,
@@ -88,7 +90,14 @@ export const auth = betterAuth({
             where: { email },
           });
 
-          if (user && !user.emailVerified) {
+          if (!user) {
+            throw new AppError(status.NOT_FOUND, "User not found");
+          }
+
+          // no need to send verify email for super admin
+          if (user.role === Role.SUPER_ADMIN) return;
+
+          if (!user.emailVerified) {
             await sendEmail({
               to: email,
               subject: "Email Verification",

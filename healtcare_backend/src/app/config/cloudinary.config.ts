@@ -17,7 +17,7 @@ export const uploadFileToCloudinary = async (
 ): Promise<UploadApiResponse> => {
   // Check if buffer and fileName are provided
   if (!buffer || !fileName) {
-    throw new Error("Invalid file data");
+    throw new AppError(status.BAD_REQUEST, "Invalid file data");
   }
 
   // Extract file extension and name

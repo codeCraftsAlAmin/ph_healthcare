@@ -2,14 +2,70 @@ import status from "http-status";
 import AppError from "../../errorHelpers/AppError";
 import { IRequestUserInterface } from "../../interface/requestUserInterface";
 import { prisma } from "../../lib/prisma";
-import { ICreatePrescriptionPayload } from "./prescription.interface";
+import {
+  ICreatePrescriptionPayload,
+  IUpdatePrescriptionPayload,
+} from "./prescription.interface";
 import { createPrescriptionPdf } from "./prescription.utils";
-import { uploadFileToCloudinary } from "../../config/cloudinary.config";
+import {
+  deleteFileFromCloudinary,
+  uploadFileToCloudinary,
+} from "../../config/cloudinary.config";
 import { sendEmail } from "../../utils/email";
+import { Role } from "../../../generated/prisma/enums";
 
-const getAllPrescriptions = async () => {};
+const getAllPrescriptions = async () => {
+  const prescriptions = await prisma.prescription.findMany({
+    include: {
+      patient: true,
+      doctor: true,
+      appointment: true,
+    },
+  });
+  return prescriptions;
+};
 
-const myPrescriptions = async () => {};
+const myPrescriptions = async (user: IRequestUserInterface) => {
+  // check if user exists
+  const userData = await prisma.user.findUniqueOrThrow({
+    where: {
+      email: user.email,
+    },
+  });
+
+  let prescriptions = {};
+  // show doctor data
+  if (userData.role === Role.DOCTOR) {
+    prescriptions = await prisma.prescription.findMany({
+      where: {
+        doctor: {
+          email: userData.email,
+        },
+      },
+      include: {
+        patient: true,
+        doctor: true,
+        appointment: true,
+      },
+    });
+  }
+  // show patient data
+  if (userData.role === Role.PATIENT) {
+    prescriptions = await prisma.prescription.findMany({
+      where: {
+        patient: {
+          email: userData.email,
+        },
+      },
+      include: {
+        patient: true,
+        doctor: true,
+        appointment: true,
+      },
+    });
+  }
+  return prescriptions;
+};
 
 const givePrescription = async (
   user: IRequestUserInterface,
@@ -92,7 +148,7 @@ const givePrescription = async (
       });
 
       // upload to cloudinary
-      const fileName = `Prescription-${Date.now()}.pdf`;
+      const fileName = `prescription-${Date.now()}.pdf`;
       const uploadedFile = await uploadFileToCloudinary(pdfBuffer, fileName);
       const pdfUrl = uploadedFile.secure_url;
 
@@ -153,9 +209,167 @@ const givePrescription = async (
   return result;
 };
 
-const updatePrescription = async () => {};
+const updatePrescription = async (
+  user: IRequestUserInterface,
+  id: string,
+  payload: IUpdatePrescriptionPayload,
+) => {
+  // find user
+  const userData = await prisma.user.findUniqueOrThrow({
+    where: {
+      email: user.email,
+    },
+  });
 
-const deletePrescription = async () => {};
+  // find prescription
+  const prescriptionData = await prisma.prescription.findUniqueOrThrow({
+    where: {
+      id,
+    },
+    include: {
+      doctor: true,
+      patient: true,
+      appointment: {
+        include: {
+          schedule: true,
+        },
+      },
+    },
+  });
+
+  // check if prescription belongs to the user
+  if (prescriptionData.doctorId !== userData.id) {
+    throw new AppError(
+      status.BAD_REQUEST,
+      "Prescription does not belong to the user",
+    );
+  }
+
+  // generate new pdf with updated data
+  const pdfBuffer = await createPrescriptionPdf({
+    doctorName: prescriptionData.doctor.name,
+    patientName: prescriptionData.patient.name,
+    doctorEmail: prescriptionData.doctor.email,
+    patientEmail: prescriptionData.patient.email,
+    appointmentDate: prescriptionData.appointment.schedule.startDateTime,
+    instructions: payload.instructions || prescriptionData.instructions,
+    followUpDate: payload.followUpDate
+      ? new Date(payload.followUpDate)
+      : prescriptionData.followUpDate,
+
+    prescriptionId: prescriptionData.id,
+    createdAt: prescriptionData.createdAt,
+  });
+
+  // upload to cloudinary
+  const fileName = `prescription-${Date.now()}.pdf`;
+  const uploadedFile = await uploadFileToCloudinary(pdfBuffer, fileName);
+  const newPdfUrl = uploadedFile.secure_url;
+
+  // delete old pdf
+  if (prescriptionData.pdfUrl) {
+    await deleteFileFromCloudinary(prescriptionData.pdfUrl);
+  }
+
+  const updatedInstructions =
+    payload.instructions || prescriptionData.instructions;
+  const updatedFollowUpDate = payload.followUpDate
+    ? new Date(payload.followUpDate)
+    : prescriptionData.followUpDate;
+
+  // update prescription
+  const result = await prisma.prescription.update({
+    where: {
+      id,
+    },
+    data: {
+      instructions: updatedInstructions,
+      followUpDate: updatedFollowUpDate,
+      pdfUrl: newPdfUrl,
+    },
+    include: {
+      doctor: true,
+      patient: true,
+      appointment: {
+        include: {
+          schedule: true,
+        },
+      },
+    },
+  });
+
+  // send email to patient
+  try {
+    await sendEmail({
+      to: result.patient.email,
+      subject: `You have received a new prescription from Dr. ${userData.name}`,
+      templateName: "prescription",
+      templateData: {
+        doctorName: result.doctor.name,
+        patientName: result.patient.name,
+        specialization: "Healthcare Provider",
+        appointmentDate: new Date(
+          result.appointment.schedule.startDateTime,
+        ).toLocaleString(),
+        instructions: payload.instructions,
+        followUpDate: result.followUpDate.toLocaleString(),
+        prescriptionId: result.id,
+        issueDate: new Date().toLocaleString(),
+        pdfUrl: newPdfUrl,
+      },
+      attachments: [
+        {
+          filename: fileName,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+  } catch (error) {
+    console.log("Failed To send email notification for prescription", error);
+  }
+
+  return result;
+};
+
+const deletePrescription = async (id: string, user: IRequestUserInterface) => {
+  // find user
+  const userData = await prisma.user.findUniqueOrThrow({
+    where: {
+      email: user.email,
+    },
+  });
+
+  // find prescription
+  const prescriptionData = await prisma.prescription.findUniqueOrThrow({
+    where: {
+      id,
+    },
+  });
+
+  // check if prescription belongs to the user
+  if (prescriptionData.doctorId !== userData.id) {
+    throw new AppError(
+      status.BAD_REQUEST,
+      "Prescription does not belong to the user",
+    );
+  }
+
+  // delete file from cloudinary
+  if (prescriptionData.pdfUrl) {
+    await deleteFileFromCloudinary(prescriptionData.pdfUrl);
+  }
+
+  // delete prescription
+  const result = await prisma.prescription.delete({
+    where: {
+      id,
+      doctorId: userData.id,
+    },
+  });
+
+  return result;
+};
 
 export const PrescriptionService = {
   getAllPrescriptions,

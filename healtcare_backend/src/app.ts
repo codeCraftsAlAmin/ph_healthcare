@@ -23,6 +23,7 @@ import { AppointmentService } from "./app/modules/appointment/appointment.servic
 import { patientRouter } from "./app/modules/patient/patient.route";
 import { reviewRouter } from "./app/modules/review/review.route";
 import { prescriptionRouter } from "./app/modules/prescription/prescription.route";
+import { statsRouter } from "./app/modules/stats/stats.route";
 
 const app: Application = express();
 
@@ -48,15 +49,15 @@ app.use(
   }),
 );
 
-app.use(express.json());
-app.use(cookieParser());
-
 // stripe webhook
 app.post(
   "/webhook",
   express.raw({ type: "application/json" }),
   PaymentController.handlePaymentWebhook,
 );
+
+app.use(express.json());
+app.use(cookieParser());
 
 // cancel unpaid appointment
 cron.schedule("*/25 * * * *", () => {
@@ -70,6 +71,9 @@ cron.schedule("*/25 * * * *", () => {
     );
   }
 });
+
+// stats route
+app.use("/api", statsRouter);
 
 // review route
 app.use("/api", reviewRouter);

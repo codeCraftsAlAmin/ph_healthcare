@@ -16,25 +16,25 @@ router.get(
 router.get(
   "/my-prescriptions",
   checkAuth(Role.PATIENT, Role.DOCTOR),
-  validateRequest(PrescriptionValidation.createPrescriptionZodSchema),
   PrescriptionController.myPrescriptions,
 );
 
 router.post(
   "/give-prescription",
   checkAuth(Role.DOCTOR),
+  validateRequest(PrescriptionValidation.createPrescriptionZodSchema),
   PrescriptionController.givePrescription,
 );
 
 router.put(
-  "/:id",
+  "/update-prescription/:id",
   checkAuth(Role.DOCTOR),
-  validateRequest(PrescriptionValidation.createPrescriptionZodSchema),
+  validateRequest(PrescriptionValidation.updatePrescriptionZodSchema),
   PrescriptionController.updatePrescription,
 );
 
 router.delete(
-  "/:id",
+  "/delete-prescription/:id",
   checkAuth(Role.DOCTOR),
   PrescriptionController.deletePrescription,
 );

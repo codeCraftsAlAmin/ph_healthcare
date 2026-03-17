@@ -5,20 +5,23 @@ import status from "http-status";
 import { PrescriptionService } from "./prescription.service";
 
 const getAllPrescriptions = catchAsync(async (req: Request, res: Response) => {
+  const result = await PrescriptionService.getAllPrescriptions();
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
     message: "Prescriptions retrieved successfully",
-    data: [],
+    data: result,
   });
 });
 
 const myPrescriptions = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const reult = await PrescriptionService.myPrescriptions(user!);
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
     message: "Prescriptions retrieved successfully",
-    data: [],
+    data: reult,
   });
 });
 
@@ -45,11 +48,17 @@ const updatePrescription = catchAsync(async (req: Request, res: Response) => {
 });
 
 const deletePrescription = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  const result = await PrescriptionService.deletePrescription(
+    id as string,
+    user!,
+  );
   sendResponse(res, {
     ok: true,
     statusCode: status.OK,
     message: "Prescription deleted successfully",
-    data: [],
+    data: result,
   });
 });
 

@@ -36,4 +36,18 @@ router.delete(
   adminController.deleteAdmin,
 );
 
+// change user status
+router.put(
+  "/change-user-status",
+  checkAuth(Role.SUPER_ADMIN),
+  adminController.changeUserStatus,
+);
+
+// change user role
+router.put(
+  "/change-user-role",
+  checkAuth(Role.SUPER_ADMIN),
+  adminController.changeUserRole,
+);
+
 export const adminRouter = router;

@@ -56,7 +56,7 @@ const bookAppointment = async (
     const appointment = await tx.appointment.create({
       data: {
         doctorId: payload.doctorId,
-        scheduleId: doctorSchedule.id,
+        scheduleId: payload.scheduleId,
         patientId: patient.id,
         videoCallingId: String(uuidv7()),
       },
@@ -66,7 +66,7 @@ const bookAppointment = async (
       where: {
         doctorId_scheduleId: {
           doctorId: payload.doctorId,
-          scheduleId: doctorSchedule.id,
+          scheduleId: payload.scheduleId,
         },
       },
       data: {
